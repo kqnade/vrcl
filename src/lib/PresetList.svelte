@@ -1,24 +1,28 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { untrack } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import type { Config, Profile } from "../types";
 
-  export let config: Config;
+  interface Props {
+    config: Config;
+    onedit: (profile: Profile) => void;
+    onnew: () => void;
+    ondelete: (id: string) => void;
+    onsettings: () => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    edit: Profile;
-    new: void;
-    delete: string;
-    settings: void;
-  }>();
+  let { config, onedit, onnew, ondelete, onsettings }: Props = $props();
 
-  let selectedId: string | null =
-    config.profiles.length > 0 ? config.profiles[0].id : null;
-  let launching = false;
-  let launchError = "";
-  let deletingId: string | null = null;
+  let selectedId: string | null = $state(
+    untrack(() => (config.profiles.length > 0 ? config.profiles[0].id : null))
+  );
+  let launching = $state(false);
+  let launchError = $state("");
+  let deletingId: string | null = $state(null);
 
-  $: selectedProfile = config.profiles.find((p) => p.id === selectedId) ?? null;
+  let selectedProfile = $derived(
+    config.profiles.find((p) => p.id === selectedId) ?? null
+  );
 
   async function launchVrchat() {
     if (!selectedProfile) return;
@@ -36,37 +40,27 @@
     }
   }
 
-  function confirmDelete(id: string) {
-    deletingId = id;
-  }
-
-  function cancelDelete() {
-    deletingId = null;
-  }
-
   function executeDelete(id: string) {
     deletingId = null;
     if (selectedId === id) {
       const remaining = config.profiles.filter((p) => p.id !== id);
       selectedId = remaining.length > 0 ? remaining[0].id : null;
     }
-    dispatch("delete", id);
+    ondelete(id);
   }
 </script>
 
 <div class="container">
   <header>
     <h1>VRChat Launch Manager</h1>
-    <button class="btn-settings" on:click={() => dispatch("settings")}>
-      ⚙ 設定
-    </button>
+    <button class="btn-settings" onclick={onsettings}>⚙ 設定</button>
   </header>
 
   <div class="content">
     <div class="sidebar">
       <div class="sidebar-header">
         <span class="label">プリセット</span>
-        <button class="btn-new" on:click={() => dispatch("new")}>＋ 新規</button>
+        <button class="btn-new" onclick={onnew}>＋ 新規</button>
       </div>
 
       {#if config.profiles.length === 0}
@@ -79,8 +73,8 @@
             <li
               class="preset-item"
               class:selected={selectedId === profile.id}
-              on:click={() => (selectedId = profile.id)}
-              on:keydown={(e) => e.key === "Enter" && (selectedId = profile.id)}
+              onclick={() => (selectedId = profile.id)}
+              onkeydown={(e) => e.key === "Enter" && (selectedId = profile.id)}
               role="option"
               aria-selected={selectedId === profile.id}
               tabindex="0"
@@ -97,16 +91,10 @@
         <div class="detail-header">
           <h2>{selectedProfile.name}</h2>
           <div class="detail-actions">
-            <button
-              class="btn-edit"
-              on:click={() => dispatch("edit", selectedProfile)}
-            >
+            <button class="btn-edit" onclick={() => onedit(selectedProfile!)}>
               編集
             </button>
-            <button
-              class="btn-delete"
-              on:click={() => confirmDelete(selectedProfile.id)}
-            >
+            <button class="btn-delete" onclick={() => (deletingId = selectedProfile!.id)}>
               削除
             </button>
           </div>
@@ -134,25 +122,13 @@
               <li><code>--fps={selectedProfile.options.fps}</code></li>
             {/if}
             {#if selectedProfile.options.process_priority !== null}
-              <li>
-                <code
-                  >プロセス優先度: {selectedProfile.options.process_priority}</code
-                >
-              </li>
+              <li><code>プロセス優先度: {selectedProfile.options.process_priority}</code></li>
             {/if}
             {#if selectedProfile.options.screen_width !== null}
-              <li>
-                <code
-                  >-screen-width={selectedProfile.options.screen_width}</code
-                >
-              </li>
+              <li><code>-screen-width={selectedProfile.options.screen_width}</code></li>
             {/if}
             {#if selectedProfile.options.screen_height !== null}
-              <li>
-                <code
-                  >-screen-height={selectedProfile.options.screen_height}</code
-                >
-              </li>
+              <li><code>-screen-height={selectedProfile.options.screen_height}</code></li>
             {/if}
             {#if selectedProfile.options.fullscreen === true}
               <li><code>-fullscreen</code></li>
@@ -178,17 +154,11 @@
           <div class="launch-error">{launchError}</div>
         {/if}
 
-        <button
-          class="btn-launch"
-          on:click={launchVrchat}
-          disabled={launching}
-        >
+        <button class="btn-launch" onclick={launchVrchat} disabled={launching}>
           {launching ? "起動中..." : "▶ VRChat 起動"}
         </button>
       {:else}
-        <div class="no-selection">
-          プリセットを選択してください
-        </div>
+        <div class="no-selection">プリセットを選択してください</div>
       {/if}
     </div>
   </div>
@@ -196,12 +166,20 @@
 
 <!-- 削除確認ダイアログ -->
 {#if deletingId}
-  <div class="overlay" on:click={cancelDelete} role="presentation">
-    <div class="dialog" on:click|stopPropagation role="dialog" aria-modal="true">
+  {@const id = deletingId}
+  <div class="overlay" role="presentation" onclick={() => (deletingId = null)}>
+    <div
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+    >
       <p>このプリセットを削除しますか？</p>
       <div class="dialog-actions">
-        <button class="btn-cancel" on:click={cancelDelete}>キャンセル</button>
-        <button class="btn-delete" on:click={() => deletingId && executeDelete(deletingId)}>削除</button>
+        <button class="btn-cancel" onclick={() => (deletingId = null)}>キャンセル</button>
+        <button class="btn-delete" onclick={() => executeDelete(id)}>削除</button>
       </div>
     </div>
   </div>
@@ -415,7 +393,6 @@
     font-size: 14px;
   }
 
-  /* Overlay / Dialog */
   .overlay {
     position: fixed;
     inset: 0;

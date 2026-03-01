@@ -1,18 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { untrack } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  export let vrchatPath: string;
+  interface Props {
+    vrchatPath: string;
+    onsave: (path: string) => void;
+    onback: () => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    save: string;
-    back: void;
-  }>();
+  let { vrchatPath, onsave, onback }: Props = $props();
 
-  let pathInput = vrchatPath;
-  let detecting = false;
-  let detectError = "";
-  let detectSuccess = "";
+  let pathInput = $state(untrack(() => vrchatPath));
+  let detecting = $state(false);
+  let detectError = $state("");
+  let detectSuccess = $state("");
 
   async function detectPath() {
     detecting = true;
@@ -31,14 +32,14 @@
 
   function save() {
     if (!pathInput.trim()) return;
-    dispatch("save", pathInput.trim());
+    onsave(pathInput.trim());
   }
 </script>
 
 <div class="container">
   <header>
     {#if vrchatPath}
-      <button class="btn-back" on:click={() => dispatch("back")}>← 戻る</button>
+      <button class="btn-back" onclick={onback}>← 戻る</button>
     {/if}
     <h1>設定</h1>
   </header>
@@ -53,18 +54,14 @@
           type="text"
           placeholder="C:\...\VRChat.exe"
           bind:value={pathInput}
-          on:input={() => {
+          oninput={() => {
             detectError = "";
             detectSuccess = "";
           }}
         />
       </div>
 
-      <button
-        class="btn-detect"
-        on:click={detectPath}
-        disabled={detecting}
-      >
+      <button class="btn-detect" onclick={detectPath} disabled={detecting}>
         {detecting ? "検索中..." : "🔍 Steam から自動検出"}
       </button>
 
@@ -84,11 +81,9 @@
 
   <div class="footer">
     {#if vrchatPath}
-      <button class="btn-cancel" on:click={() => dispatch("back")}>
-        キャンセル
-      </button>
+      <button class="btn-cancel" onclick={onback}>キャンセル</button>
     {/if}
-    <button class="btn-save" on:click={save} disabled={!pathInput.trim()}>
+    <button class="btn-save" onclick={save} disabled={!pathInput.trim()}>
       保存
     </button>
   </div>

@@ -8,11 +8,11 @@
 
   type View = "presets" | "editor" | "settings";
 
-  let config: Config | null = null;
-  let currentView: View = "presets";
-  let editingProfile: Profile | null = null;
-  let loading = true;
-  let initError = "";
+  let config: Config | null = $state(null);
+  let currentView: View = $state("presets");
+  let editingProfile: Profile | null = $state(null);
+  let loading = $state(true);
+  let initError = $state("");
 
   onMount(async () => {
     try {
@@ -41,32 +41,28 @@
     currentView = view;
   }
 
-  async function handleSavePreset(event: CustomEvent<Profile>) {
+  async function handleSavePreset(savedProfile: Profile) {
     if (!config) return;
-    const savedProfile = event.detail;
     const idx = config.profiles.findIndex((p) => p.id === savedProfile.id);
-    let newProfiles: Profile[];
-    if (idx >= 0) {
-      newProfiles = config.profiles.map((p) =>
-        p.id === savedProfile.id ? savedProfile : p
-      );
-    } else {
-      newProfiles = [...config.profiles, savedProfile];
-    }
+    const newProfiles =
+      idx >= 0
+        ? config.profiles.map((p) => (p.id === savedProfile.id ? savedProfile : p))
+        : [...config.profiles, savedProfile];
     await handleSaveConfig({ ...config, profiles: newProfiles });
     navigateTo("presets");
   }
 
-  async function handleDeletePreset(event: CustomEvent<string>) {
+  async function handleDeletePreset(id: string) {
     if (!config) return;
-    const id = event.detail;
-    const newProfiles = config.profiles.filter((p) => p.id !== id);
-    await handleSaveConfig({ ...config, profiles: newProfiles });
+    await handleSaveConfig({
+      ...config,
+      profiles: config.profiles.filter((p) => p.id !== id),
+    });
   }
 
-  async function handleSaveSettings(event: CustomEvent<string>) {
+  async function handleSaveSettings(path: string) {
     if (!config) return;
-    await handleSaveConfig({ ...config, vrchat_path: event.detail });
+    await handleSaveConfig({ ...config, vrchat_path: path });
     navigateTo("presets");
   }
 </script>
@@ -82,22 +78,22 @@
     {#if currentView === "presets"}
       <PresetList
         {config}
-        on:edit={(e) => navigateTo("editor", e.detail)}
-        on:new={() => navigateTo("editor", null)}
-        on:delete={handleDeletePreset}
-        on:settings={() => navigateTo("settings")}
+        onedit={(p) => navigateTo("editor", p)}
+        onnew={() => navigateTo("editor", null)}
+        ondelete={handleDeletePreset}
+        onsettings={() => navigateTo("settings")}
       />
     {:else if currentView === "editor"}
       <PresetEditor
         profile={editingProfile}
-        on:save={handleSavePreset}
-        on:cancel={() => navigateTo("presets")}
+        onsave={handleSavePreset}
+        oncancel={() => navigateTo("presets")}
       />
     {:else if currentView === "settings"}
       <Settings
         vrchatPath={config.vrchat_path}
-        on:save={handleSaveSettings}
-        on:back={() => navigateTo("presets")}
+        onsave={handleSaveSettings}
+        onback={() => navigateTo("presets")}
       />
     {/if}
   {/if}

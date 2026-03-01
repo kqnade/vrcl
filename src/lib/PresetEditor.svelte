@@ -1,40 +1,43 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { untrack } from "svelte";
   import type { Profile, ProfileOptions } from "../types";
   import { defaultProfileOptions } from "../types";
 
-  export let profile: Profile | null;
+  interface Props {
+    profile: Profile | null;
+    onsave: (profile: Profile) => void;
+    oncancel: () => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    save: Profile;
-    cancel: void;
-  }>();
+  let { profile, onsave, oncancel }: Props = $props();
 
-  const isNew = profile === null;
+  const isNew = untrack(() => profile === null);
 
-  let name = profile?.name ?? "";
-  let options: ProfileOptions = profile
-    ? { ...profile.options }
-    : defaultProfileOptions();
+  let name = $state(untrack(() => profile?.name ?? ""));
+  let options: ProfileOptions = $state(
+    untrack(() => (profile ? { ...profile.options } : defaultProfileOptions()))
+  );
 
   // fullscreen の三値を select で扱うために変換
-  let fullscreenValue: "null" | "true" | "false" =
+  let fullscreenValue = $state<"null" | "true" | "false">(
     options.fullscreen === true
       ? "true"
       : options.fullscreen === false
         ? "false"
-        : "null";
+        : "null"
+  );
 
-  $: options.fullscreen =
-    fullscreenValue === "true"
-      ? true
-      : fullscreenValue === "false"
-        ? false
-        : null;
+  $effect(() => {
+    options.fullscreen =
+      fullscreenValue === "true"
+        ? true
+        : fullscreenValue === "false"
+          ? false
+          : null;
+  });
 
-  let nameError = "";
+  let nameError = $state("");
 
-  // テンプレート内で TypeScript キャストが使えないため、ヘルパー関数として定義
   function handleFpsInput(e: Event) {
     const v = (e.target as HTMLInputElement).value;
     options.fps = v === "" ? null : parseInt(v, 10);
@@ -58,18 +61,17 @@
       return;
     }
     nameError = "";
-    const saved: Profile = {
+    onsave({
       id: profile?.id ?? crypto.randomUUID(),
       name: name.trim(),
       options: { ...options },
-    };
-    dispatch("save", saved);
+    });
   }
 </script>
 
 <div class="container">
   <header>
-    <button class="btn-back" on:click={() => dispatch("cancel")}>← 戻る</button>
+    <button class="btn-back" onclick={oncancel}>← 戻る</button>
     <h1>{isNew ? "新規プリセット" : "プリセット編集"}</h1>
   </header>
 
@@ -82,7 +84,7 @@
         type="text"
         placeholder="例: 普段用"
         bind:value={name}
-        on:input={() => (nameError = "")}
+        oninput={() => (nameError = "")}
       />
       {#if nameError}
         <span class="field-error">{nameError}</span>
@@ -108,30 +110,21 @@
           </span>
         </label>
         <label class="opt-row">
-          <input
-            type="checkbox"
-            bind:checked={options.enable_udon_debug_logging}
-          />
+          <input type="checkbox" bind:checked={options.enable_udon_debug_logging} />
           <span class="opt-label">
             <span class="opt-name">Udon Debug ログ</span>
             <span class="opt-flag">--enable-udon-debug-logging</span>
           </span>
         </label>
         <label class="opt-row">
-          <input
-            type="checkbox"
-            bind:checked={options.enable_sdk_log_levels}
-          />
+          <input type="checkbox" bind:checked={options.enable_sdk_log_levels} />
           <span class="opt-label">
             <span class="opt-name">SDK ログレベル</span>
             <span class="opt-flag">--enable-sdk-log-levels</span>
           </span>
         </label>
         <label class="opt-row">
-          <input
-            type="checkbox"
-            bind:checked={options.disable_hw_video_decoding}
-          />
+          <input type="checkbox" bind:checked={options.disable_hw_video_decoding} />
           <span class="opt-label">
             <span class="opt-name">HW ビデオデコード無効</span>
             <span class="opt-flag">--disable-hw-video-decoding</span>
@@ -178,7 +171,7 @@
               max="360"
               placeholder="無制限"
               value={options.fps ?? ""}
-              on:input={handleFpsInput}
+              oninput={handleFpsInput}
             />
           </div>
         </div>
@@ -195,7 +188,7 @@
               min="320"
               placeholder="デフォルト"
               value={options.screen_width ?? ""}
-              on:input={handleWidthInput}
+              oninput={handleWidthInput}
             />
           </div>
         </div>
@@ -212,7 +205,7 @@
               min="240"
               placeholder="デフォルト"
               value={options.screen_height ?? ""}
-              on:input={handleHeightInput}
+              oninput={handleHeightInput}
             />
           </div>
         </div>
@@ -230,7 +223,7 @@
               max="2"
               placeholder="通常 (0)"
               value={options.process_priority ?? ""}
-              on:input={handlePriorityInput}
+              oninput={handlePriorityInput}
             />
             <span class="priority-hint">低← →高</span>
           </div>
@@ -268,10 +261,8 @@
   </div>
 
   <div class="footer">
-    <button class="btn-cancel" on:click={() => dispatch("cancel")}>
-      キャンセル
-    </button>
-    <button class="btn-save" on:click={save}>保存</button>
+    <button class="btn-cancel" onclick={oncancel}>キャンセル</button>
+    <button class="btn-save" onclick={save}>保存</button>
   </div>
 </div>
 
@@ -342,7 +333,6 @@
     font-size: 11px;
   }
 
-  /* チェックボックスグリッド */
   .options-grid {
     display: flex;
     flex-direction: column;
@@ -381,7 +371,6 @@
     font-family: "Consolas", monospace;
   }
 
-  /* 数値入力グリッド */
   .numeric-grid {
     display: flex;
     flex-direction: column;
