@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build and release (stable - main)
+        if: github.ref == 'refs/heads/main'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Release v__VERSION__
+          releaseBody: See CHANGELOG for details.
+          prerelease: false
+
+      - name: Build and release (dev - develop)
+        if: github.ref == 'refs/heads/develop'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: dev-latest
+          releaseName: Development Build
+          releaseBody: 最新の develop ブランチビルド。安定版は stable release をご利用ください。
+          prerelease: true
