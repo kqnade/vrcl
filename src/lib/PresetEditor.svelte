@@ -34,6 +34,24 @@
 
   let nameError = "";
 
+  // テンプレート内で TypeScript キャストが使えないため、ヘルパー関数として定義
+  function handleFpsInput(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    options.fps = v === "" ? null : parseInt(v, 10);
+  }
+  function handleWidthInput(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    options.screen_width = v === "" ? null : parseInt(v, 10);
+  }
+  function handleHeightInput(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    options.screen_height = v === "" ? null : parseInt(v, 10);
+  }
+  function handlePriorityInput(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    options.process_priority = v === "" ? null : parseInt(v, 10);
+  }
+
   function save() {
     if (!name.trim()) {
       nameError = "名前を入力してください";
@@ -160,10 +178,7 @@
               max="360"
               placeholder="無制限"
               value={options.fps ?? ""}
-              on:input={(e) => {
-                const v = (e.target as HTMLInputElement).value;
-                options.fps = v === "" ? null : parseInt(v, 10);
-              }}
+              on:input={handleFpsInput}
             />
           </div>
         </div>
@@ -180,10 +195,7 @@
               min="320"
               placeholder="デフォルト"
               value={options.screen_width ?? ""}
-              on:input={(e) => {
-                const v = (e.target as HTMLInputElement).value;
-                options.screen_width = v === "" ? null : parseInt(v, 10);
-              }}
+              on:input={handleWidthInput}
             />
           </div>
         </div>
@@ -200,10 +212,7 @@
               min="240"
               placeholder="デフォルト"
               value={options.screen_height ?? ""}
-              on:input={(e) => {
-                const v = (e.target as HTMLInputElement).value;
-                options.screen_height = v === "" ? null : parseInt(v, 10);
-              }}
+              on:input={handleHeightInput}
             />
           </div>
         </div>
@@ -221,10 +230,7 @@
               max="2"
               placeholder="通常 (0)"
               value={options.process_priority ?? ""}
-              on:input={(e) => {
-                const v = (e.target as HTMLInputElement).value;
-                options.process_priority = v === "" ? null : parseInt(v, 10);
-              }}
+              on:input={handlePriorityInput}
             />
             <span class="priority-hint">低← →高</span>
           </div>

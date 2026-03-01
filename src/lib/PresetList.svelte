@@ -201,7 +201,7 @@
       <p>このプリセットを削除しますか？</p>
       <div class="dialog-actions">
         <button class="btn-cancel" on:click={cancelDelete}>キャンセル</button>
-        <button class="btn-delete" on:click={() => executeDelete(deletingId!)}>削除</button>
+        <button class="btn-delete" on:click={() => deletingId && executeDelete(deletingId)}>削除</button>
       </div>
     </div>
   </div>
